@@ -3,31 +3,32 @@ pragma solidity ^0.8.9;
 
 import "@openzeppelin/contracts/token/ERC721/extensions/ERC721Enumerable.sol";
 import "@openzeppelin/contracts/utils/math/SafeMath.sol";
+import "@openzeppelin/contracts/utils/Strings.sol";
 
-contract MyNft is ERC721Enumerable {
+contract Foundy is ERC721Enumerable {
   using SafeMath for uint256;
+  using Strings for uint256;
 
   address private _owner;
-  uint256 private TOKEN_TOTAL_AMOUNT = 20;
+  uint256 private TOKEN_TOTAL_AMOUNT = 50;
   string private baseURI;
 
-  constructor(string memory name, string memory symbol) ERC721(name, symbol) {
+  constructor() ERC721("Foundy", "FND") {
     _owner = msg.sender;
-    setBaseURI("ipfs://");
+    setBaseURI("ipfs://QmcXoQRmgfub7bBkc3Xkx7aoKeDkXopkxbDfaG9TYA5JR7/");
   }
 
   function setBaseURI(string memory _baseUri) public onlyOwner {
         baseURI = _baseUri;
   }
 
-  function mint() public payable {
-        require(
-            totalSupply() <= TOKEN_TOTAL_AMOUNT,
-            "Error token limit has been reached"
-        );
-        require(msg.value >= 0.01 ether, "No enough to mint");
-
-        _mint();
+  function mint(uint256 quantity) public onlyOwner {
+      _checkLimitOrFail();
+      while (quantity > 0) {
+            _checkLimitOrFail();
+            _mint();
+            quantity --;
+      }
   }
 
   function _mint() private {
@@ -45,6 +46,11 @@ contract MyNft is ERC721Enumerable {
     _owner = newOwner;
   }
 
+  function tokenURI(uint256 tokenId) public view virtual override returns (string memory) {
+        _requireMinted(tokenId);
+        return bytes(_baseURI()).length > 0 ? string(abi.encodePacked(_baseURI(), tokenId.toString(), ".json")) : "";
+    }
+
   function owner() public view returns(address) {
     return _owner;
   }
@@ -52,6 +58,15 @@ contract MyNft is ERC721Enumerable {
   modifier onlyOwner() {
         require(owner() == _msgSender(), "Ownable: caller is not the owner");
         _;
+  }
+
+  modifier tokenLimit() {
+      _checkLimitOrFail();
+      _;
+  }
+
+  function _checkLimitOrFail() internal view {
+      require(totalSupply() < TOKEN_TOTAL_AMOUNT, "Error token limit has been reached");
   }
 
   function _baseURI() internal view override returns (string memory) {
